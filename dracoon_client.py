@@ -37,9 +37,10 @@ class DracoonClient:
                 self.username,
                 self.password
             )
+            expires_in = token_info.get("expires_in", "unbekannt")
 
             self.logger.info(
-                f"Erfolgreich bei Dracoon angemeldet – Token gültig bis {connection.expiration_date}"
+                f"Erfolgreich bei Dracoon angemeldet – Token gültig bis {expires_in}"
             )
         except DRACOONHttpError as e:
             self.logger.error(f"Fehler bei Dracoon-Login: {e}")
