@@ -2,7 +2,8 @@ import os
 import zlib
 import asyncio
 from datetime import datetime, timedelta
-from dracoon import DRACOON, OAuth2Connection, DRACOONHttpError
+from dracoon import DRACOON, DRACOONHttpError
+
 
 class DracoonClient:
     """Verwaltet Upload, Hashprüfung und Remote-Retention im Dracoon-Space"""
@@ -21,19 +22,15 @@ class DracoonClient:
         self.dracoon = None
 
     async def connect(self):
-        """OAuth2 Login"""
-        try:
-            conn = OAuth2Connection(
-                base_url=self.base_url,
-                client_id=self.client_id,
-                client_secret=self.client_secret
-            )
-            self.dracoon = DRACOON(conn)
-            await self.dracoon.connect(username=self.username, password=self.password)
-            self.logger.info("Erfolgreich bei Dracoon angemeldet.")
-        except DRACOONHttpError as e:
-            self.logger.error(f"Fehler bei Dracoon-Login: {e}")
-            raise
+    """OAuth2 Login"""
+    try:
+        self.dracoon = DRACOON(base_url=self.base_url, raise_on_err=True)
+        await self.dracoon.connect(username=self.username, password=self.password)
+        self.logger.info("Erfolgreich bei Dracoon angemeldet.")
+    except DRACOONHttpError as e:
+        self.logger.error(f"Fehler bei Dracoon-Login: {e}")
+        raise
+
 
     async def upload_file(self, file_path: str):
         """Lädt Datei hoch, prüft CRC, löscht lokal bei Erfolg."""
