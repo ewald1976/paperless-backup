@@ -1,6 +1,7 @@
 import os
 import tarfile
 import argparse
+import io
 from datetime import datetime
 from config_loader import ConfigLoader
 from dracoon_client import DracoonClient
@@ -30,11 +31,10 @@ def main():
     ]
 
     try:
-        # --- Backup vorbereiten ---
         backup_mgr = BackupManager(config, logger)
         logger.backup_event("Backup gestartet")
 
-        # --- Datenbankdump ---
+        # --- Datenbankdump im Container erstellen ---
         logger.info(f"→ Erstelle Datenbankdump im Container {config['backup']['db_container']} ...")
         db_dump_path = backup_mgr.create_db_dump()
 
@@ -48,10 +48,21 @@ def main():
         archive_path = os.path.join(output_dir, archive_name)
 
         with tarfile.open(archive_path, "w:gz") as tar:
-            # Datenbankdump hinzufügen
-            if os.path.exists(db_dump_path):
-                tar.add(db_dump_path, arcname=os.path.basename(db_dump_path))
-            # Datenverzeichnisse hinzufügen
+            # --- Stream: Datenbankdump direkt aus dem Container lesen ---
+            logger.info("→ Füge Datenbankdump aus Container hinzu ...")
+            container = config["backup"]["db_container"]
+            stream_cmd = f"docker exec {container} cat {db_dump_path}"
+            dump_bytes = os.popen(stream_cmd).buffer.read()
+
+            if dump_bytes:
+                tarinfo = tarfile.TarInfo(name=os.path.basename(db_dump_path))
+                tarinfo.size = len(dump_bytes)
+                tar.addfile(tarinfo, io.BytesIO(dump_bytes))
+                logger.info(f"→ Dump erfolgreich ins Archiv integriert: {os.path.basename(db_dump_path)}")
+            else:
+                raise Exception("Leerer Dump-Stream erhalten (pg_dump fehlgeschlagen?)")
+
+            # --- Datenverzeichnisse hinzufügen ---
             for d in data_dirs:
                 if os.path.exists(d):
                     tar.add(d, arcname=os.path.basename(d))
