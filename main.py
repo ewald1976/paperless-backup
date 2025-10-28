@@ -13,8 +13,8 @@ RESET = "\033[0m"
 
 def banner(mode_text):
     print(f"{AMBER}╔══════════════════════════════════════════╗{RESET}")
-    print(f"{AMBER}║  🗂️  Paperless Backup  v1.0.2             ║{RESET}")
-    print(f"{AMBER}║  Mode: {mode_text:<31}║{RESET}")
+    print(f"{AMBER}║  🗂️  Paperless Backup  v1.0.2            ║{RESET}")
+    print(f"{AMBER}║  Mode: {mode_text:<31}                   ║{RESET}")
     print(f"{AMBER}╚══════════════════════════════════════════╝{RESET}\n")
 
 def main():
