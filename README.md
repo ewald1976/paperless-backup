@@ -1,57 +1,62 @@
 # 🗂️ Paperless Backup Tool
 
-Automatisches Backup-Tool für [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx),  
-entwickelt in **Python**, mit **Upload zu Dracoon** und optionaler **automatischer Ausführung via systemd**.
+Automatisches Backup-Tool für [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx),
+entwickelt in **Python**, mit **Upload zu Dracoon** und optionaler **automatischer Ausführung über systemd**.
+
+> ⚠️ **Hinweis:**  
+> Dieses Tool ist aktuell **ausschließlich für die Container-Version** von  
+> [Paperless-ngx (Docker-Image)](https://github.com/paperless-ngx/paperless-ngx)  
+> und für **PostgreSQL-Datenbanken** ausgelegt.  
+> Es nutzt Docker-Befehle für den Datenbank-Dump und greift auf Container-Volumes zu.
 
 Das Tool erstellt vollständige Backups bestehend aus:
 - PostgreSQL-Datenbank-Dump  
 - Paperless-Daten- und Medienverzeichnissen  
 - Komprimiertem Archiv im `.tar.gz`-Format  
 - Automatischem Upload in einen definierten Dracoon-Datenraum  
-- Optionaler Entfernung älterer Backups gemäß Retention-Einstellung  
+- Optionaler Entfernung älterer Backups gemäß Aufbewahrungszeit  
 
 ---
 
 ## 🚀 Funktionen
 
 - 🔄 Vollautomatisiertes Offsite-Backup über die Dracoon-API  
-- 🧮 CRC32-Prüfung nach Upload (Integritätssicherung)  
-- 🧹 Automatische Bereinigung alter Backups (konfigurierbare Aufbewahrungszeit)  
-- 🪶 Headless-Modus für Cron oder systemd-Timer  
-- 🧾 JSON-Logging mit Zeitstempel und Ereignistyp (einfach auswertbar, z. B. in Home Assistant)  
-- 🧱 Optional interaktive Konsolen-GUI im Retro-Stil (Bernsteinfarben)  
+- 🧮 CRC32-Prüfung nach Upload (Integritätsprüfung)  
+- 🧹 Automatische Bereinigung alter Backups  
+- 🪶 Headless-Modus für Cron / systemd-Timer  
+- 🧾 JSON-Logging mit Zeitstempel und Ereignistyp (z. B. für Home Assistant-Auswertung)
 
 ---
 
 ## 📦 Voraussetzungen
 
-- **Linux-System** mit `docker` und `systemd`
-- **Python 3.11+**
-- `pg_dump` (im Container verfügbar)
-- Zugriff auf einen **Dracoon-Account** mit gültigem API-Client (Password-Flow aktiviert)
+- **Paperless-ngx** als Docker-Installation  
+  → [Offizielles Repository](https://github.com/paperless-ngx/paperless-ngx)  
+- **PostgreSQL** als Datenbank (Standard in Paperless-ngx-Docker)  
+- **Linux-System** mit `docker` und `systemd`  
+- **Python 3.11 oder höher**  
+- `pg_dump` (im Paperless-Datenbank-Container verfügbar)  
+- Zugriff auf einen **Dracoon-Account** mit aktiviertem Password-Flow-Client  
 
 ---
 
 ## ⚙️ Installation
 
 ### 1️⃣ Repository klonen
-
 ```bash
 git clone https://github.com/ewald1976/paperless-backup.git
 cd paperless-backup
 ```
 
 ### 2️⃣ Python-Umgebung einrichten
-
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Konfiguration anpassen
-
-Erstelle oder bearbeite die Datei `.env` im Projektverzeichnis:
+### 3️⃣ Konfiguration anlegen
+Erstelle eine Datei `.env` im Projektverzeichnis:
 
 ```dotenv
 # Paperless Backup Configuration
@@ -77,15 +82,13 @@ LOG_FILE=backup.log
 
 ## ▶️ Nutzung
 
-### Manuell:
-
+### Manuell starten
 ```bash
 source venv/bin/activate
 python main.py --headless
 ```
 
-### Mit GUI (interaktiv):
-
+### Testweise mit Konsolenausgabe
 ```bash
 python main.py
 ```
@@ -94,13 +97,12 @@ python main.py
 
 ## ⚙️ Automatischer Start via systemd
 
-Paperless-Backup kann automatisch über **systemd** ausgeführt werden,  
-anstatt per Cron. Die Systemd-Units (`paperless-backup.service` und `paperless-backup.timer`)  
-liegen im Verzeichnis [`systemd/`](systemd/).
+Paperless-Backup kann automatisch über **systemd** ausgeführt werden.  
+Die passenden Units (`paperless-backup.service` und `paperless-backup.timer`)  
+liegen im Verzeichnis `systemd/`.
 
 ### Einrichtung
-
-1. Passe in `systemd/paperless-backup.service` folgende Werte an:
+1. In `systemd/paperless-backup.service` anpassen:
    ```ini
    User=<user>
    WorkingDirectory=<path-to-your-paperless-backup>
@@ -108,43 +110,41 @@ liegen im Verzeichnis [`systemd/`](systemd/).
    EnvironmentFile=<path-to-your-paperless-backup>/.env
    ```
 
-2. Installiere und aktiviere die Units:
+2. Aktivieren:
    ```bash
    sudo cp systemd/paperless-backup.* /etc/systemd/system/
    sudo systemctl daemon-reload
    sudo systemctl enable --now paperless-backup.timer
    ```
 
-3. Prüfe den Status:
+3. Status prüfen:
    ```bash
    systemctl list-timers | grep paperless
    journalctl -u paperless-backup -f
    ```
 
-> Standardmäßig wird das Backup täglich um **03:00 Uhr** ausgeführt.  
-> Wenn das System zu dieser Zeit aus war, wird der Lauf beim nächsten Start nachgeholt (`Persistent=true`).
+> Standardmäßig läuft das Backup täglich um **03:00 Uhr**.  
+> Wenn das System zu diesem Zeitpunkt aus war, wird der Lauf beim nächsten Start nachgeholt (`Persistent=true`).
 
 ---
 
-## 🧹 Aufräumen alter Backups
+## 🧹 Bereinigung alter Backups
 
-- Alte Backups werden anhand des Dateinamens erkannt  
-  (`paperless_backup_YYYY-MM-DD_HH-MM-SS.tar.gz`)
-- Dateien, die älter sind als der konfigurierte Zeitraum (`RETENTION_DAYS`),  
-  werden automatisch aus Dracoon entfernt
-- Andere Dateien im Zielraum bleiben unberührt
+- Alte Backups werden am Dateinamen erkannt (`paperless_backup_YYYY-MM-DD_HH-MM-SS.tar.gz`)  
+- Dateien, die älter sind als `RETENTION_DAYS`, werden aus Dracoon gelöscht  
+- Andere Dateien im Zielordner bleiben unangetastet
 
 ---
 
 ## 🧾 Log-Format
 
-Das Tool schreibt strukturierte JSON-Logs, z. B.:
+Das Tool erzeugt strukturierte JSON-Logs, z. B.:
 
 ```json
 {"timestamp": "2025-10-28T18:23:03", "event": "UPLOAD_EVENT", "message": "CRC32 validiert – lösche lokale Datei"}
 ```
 
-Diese Logs können z. B. in Home Assistant oder Grafana visualisiert werden.
+Diese können z. B. von Home Assistant oder Grafana verarbeitet werden.
 
 ---
 
@@ -158,7 +158,7 @@ paperless-backup/
 ├── config_loader.py
 ├── logger.py
 ├── requirements.txt
-├── .env (lokal, nicht im Git)
+├── .env        # lokale Konfiguration (nicht im Git)
 └── systemd/
     ├── paperless-backup.service
     └── paperless-backup.timer
@@ -166,12 +166,12 @@ paperless-backup/
 
 ---
 
-## 🧠 Zukunftsplanung
+## 🔮 Ausblick (Version 2.0)
 
-- 🔔 Integration mit Home Assistant (Webhook bei Erfolg/Fehler)  
-- 🧰 Konfigurierbarer `target_path` in Dracoon  
-- 📊 Dashboard-Widget zur Backup-Übersicht  
-- 🪶 Erweiterte GUI mit Status- und Fortschrittsanzeige  
+- Unterstützung weiterer Provider (OwnCloud, Google Drive, S3 usw.)  
+- Interaktiver Installer / Setup-Wizard  
+- Optionale GUI im Retro-Look  
+- Verbesserte Status- und Log-Ansicht  
 
 ---
 
