@@ -11,7 +11,7 @@ def main():
     print("🗂️  Paperless Backup – Version 1.0.2")
 
     # Konfiguration laden
-    loader = ConfigLoader(".env")
+    loader = ConfigLoader()
     config = loader.load()
 
     # Logger initialisieren
