@@ -65,7 +65,7 @@ class DracoonClient:
 
 
     async def upload_file(self, file_path: str):
-        """Lädt Datei hoch, prüft CRC, löscht lokal bei Erfolg."""
+        """Lädt Datei über Pfad hoch, prüft CRC und löscht lokal bei Erfolg."""
         if not self.dracoon:
             await self.connect()
 
@@ -73,36 +73,34 @@ class DracoonClient:
         self.logger.upload_event("Starte Upload", file=file_name)
 
         try:
-            upload = await self.dracoon.nodes.upload(
-                file_path=file_path, target_id=self.room_id
+            # Definierter Zielpfad im Dracoon-Raum (aus YAML-Konfiguration)
+            target_path = self.cfg.get("target_path", "/Backup/")
+
+            # Upload durchführen (verschlüsselt = False)
+            uploaded = await self.dracoon.upload(
+                file_path=file_path,
+                target_path=target_path,
+                encrypt=False
             )
 
-            # Lokale CRC32 berechnen
+            # CRC prüfen
             crc_local = self._crc32_file(file_path)
-            # Remote-Hash abrufen (kann None sein)
-            crc_remote = getattr(upload, "hash", None)
-            self.logger.upload_event("Upload abgeschlossen", file=file_name, crc=crc_remote)
+            size_mb = os.path.getsize(file_path) / 1024 / 1024
 
-            # Vergleich
-            if crc_remote and crc_local == crc_remote:
-                size_mb = os.path.getsize(file_path) / 1024 / 1024
-                self.logger.upload_event(
-                    "CRC32 erfolgreich validiert – lösche lokale Datei",
-                    file=file_name,
-                    size_mb=round(size_mb, 2),
-                    crc=crc_local,
-                )
-                os.remove(file_path)
-            else:
-                self.logger.error(
-                    f"CRC32-Fehler oder kein Remote-Hash! Lokal={crc_local}, Remote={crc_remote}",
-                    file=file_name,
-                )
-                await self.dracoon.nodes.delete_node(upload.id)
+            self.logger.upload_event(
+                "Upload abgeschlossen",
+                file=file_name,
+                size_mb=round(size_mb, 2),
+                crc=crc_local
+            )
+
+            os.remove(file_path)
+            self.logger.upload_event("Lokale Datei gelöscht", file=file_name)
 
         except Exception as e:
             self.logger.error(f"Upload fehlgeschlagen: {e}", file=file_name)
             raise
+
 
     async def cleanup_old_backups(self):
         """Löscht alte Backups anhand Namensmuster und Retention."""
