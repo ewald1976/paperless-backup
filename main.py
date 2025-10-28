@@ -1,47 +1,82 @@
-#!/usr/bin/env python3
+import os
+import tarfile
+import argparse
+from datetime import datetime
 from config_loader import ConfigLoader
-from backup_manager import BackupManager
 from dracoon_client import DracoonClient
 from logger import JsonLogger
-from rich.console import Console
-import argparse
-import asyncio
+from backup_manager import BackupManager
 
-console = Console()
 
 def main():
     parser = argparse.ArgumentParser(description="Paperless Backup Tool")
-    parser.add_argument("--headless", action="store_true", help="Headless-Modus (für Cronjobs)")
+    parser.add_argument("--headless", action="store_true", help="Headless mode (no interactive UI)")
     args = parser.parse_args()
 
-    # 1️⃣ Konfiguration laden
+    # --- Konfiguration laden ---
     loader = ConfigLoader()
     config = loader.load()
 
-    # 2️⃣ Logger initialisieren
+    # --- Logger initialisieren ---
     logger = JsonLogger(config["backup"]["log_file"], headless=args.headless)
     logger.info("Starte Paperless Backup Tool")
 
-    # 3️⃣ Backup durchführen
-    manager = BackupManager(config, logger)
-    archive_path = manager.run_backup()
+    # --- Feste Datenverzeichnisse ---
+    data_dirs = [
+        "/data/data",
+        "/data/media",
+        "/data/export",
+        "/data/consume",
+    ]
 
-    # 4️⃣ Wenn erfolgreich: Dracoon-Upload & Remote-Cleanup starten
-    if archive_path:
+    try:
+        # --- Backup vorbereiten ---
+        backup_mgr = BackupManager(config, logger)
+        logger.backup_event("Backup gestartet")
+
+        # --- Datenbankdump ---
+        logger.info(f"→ Erstelle Datenbankdump im Container {config['backup']['db_container']} ...")
+        db_dump_path = backup_mgr.create_db_dump()
+
+        # --- Archiv erstellen ---
+        logger.info("Komprimiere Daten...")
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = config["backup"]["output_dir"]
+        os.makedirs(output_dir, exist_ok=True)
+
+        archive_name = f"paperless_backup_{timestamp}.tar.gz"
+        archive_path = os.path.join(output_dir, archive_name)
+
+        with tarfile.open(archive_path, "w:gz") as tar:
+            # Datenbankdump hinzufügen
+            if os.path.exists(db_dump_path):
+                tar.add(db_dump_path, arcname=os.path.basename(db_dump_path))
+            # Datenverzeichnisse hinzufügen
+            for d in data_dirs:
+                if os.path.exists(d):
+                    tar.add(d, arcname=os.path.basename(d))
+                else:
+                    logger.info(f"Überspringe nicht vorhandenes Verzeichnis: {d}")
+
+        logger.backup_event("Backup erfolgreich erstellt", file=archive_path)
         logger.backup_event("Backup abgeschlossen", file=archive_path)
-        asyncio.run(upload_and_cleanup(config, logger, archive_path))
-    else:
+
+        # --- Upload zu Dracoon ---
+        dracoon_client = DracoonClient(config, logger)
+        import asyncio
+        asyncio.run(dracoon_client.upload_file(archive_path))
+        asyncio.run(dracoon_client.cleanup_old_backups())
+
+    except Exception as e:
+        logger.error(f"Fehler während des Backups: {e}")
+        if "archive_path" in locals() and os.path.exists(archive_path):
+            os.remove(archive_path)
+            logger.delete_event("Entferne unvollständige Datei")
         logger.error("Kein Archiv erstellt – Upload wird übersprungen.")
 
-async def upload_and_cleanup(config, logger, archive_path):
-    """Async-Workflow für Upload und Remote-Retention"""
-    try:
-        client = DracoonClient(config, logger)
-        await client.connect()
-        await client.upload_file(archive_path)
-        await client.cleanup_old_backups()
-    except Exception as e:
-        logger.error(f"Fehler im Dracoon-Prozess: {e}")
+    finally:
+        logger.backup_event("Backup-Prozess beendet")
+
 
 if __name__ == "__main__":
     main()
