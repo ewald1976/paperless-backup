@@ -74,7 +74,7 @@ class DracoonClient:
 
         try:
             # Zielpfad im Dracoon-Raum (aktuell statisch, später konfigurierbar)
-            target_path = self.cfg.get("target_path", "/Backups/Paperless/")
+            target_path = self.cfg.get("target_path", "/Backup/")
 
             # Upload durchführen – ohne encrypt-Parameter
             uploaded = await self.dracoon.upload(
