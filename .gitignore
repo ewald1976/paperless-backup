@@ -1,0 +1,14 @@
+# Python Cache
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+
+# Backup Outputs
+output/
+*.tar.gz
+*.dump
+
+# Temporary
+/tmp/
