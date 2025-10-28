@@ -22,12 +22,12 @@ class DracoonClient:
         self.dracoon = None
 
     async def connect(self):
-    """OAuth2 Login"""
-    try:
+        """OAuth2 Login"""
+        try:
         self.dracoon = DRACOON(base_url=self.base_url, raise_on_err=True)
         await self.dracoon.connect(username=self.username, password=self.password)
         self.logger.info("Erfolgreich bei Dracoon angemeldet.")
-    except DRACOONHttpError as e:
+        except DRACOONHttpError as e:
         self.logger.error(f"Fehler bei Dracoon-Login: {e}")
         raise
 
