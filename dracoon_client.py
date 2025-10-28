@@ -2,7 +2,9 @@ import os
 import zlib
 import asyncio
 from datetime import datetime, timedelta
-from dracoon import DRACOON, DRACOONHttpError
+from dracoon import DRACOON
+from dracoon.errors import DRACOONHttpError
+
 
 class DracoonClient:
     """Verwaltet Upload, CRC-Prüfung und Remote-Retention im Dracoon-Space."""
