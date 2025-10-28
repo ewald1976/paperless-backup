@@ -1,3 +1,10 @@
-PyYAML
+# Core dependencies
+pyyaml
 rich
 
+# Paperless Backup logic
+dracoon
+
+# Optional: falls du virtualenv noch nicht global installiert hast
+# (nur bei frischen Systemen notwendig)
+# virtualenv
