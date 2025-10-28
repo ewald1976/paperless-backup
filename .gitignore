@@ -12,3 +12,10 @@ output/
 
 # Temporary
 /tmp/
+# Konfigurationsdateien mit Passwörtern
+backup.yaml
+config/*.yaml
+
+# Logdateien
+*.log
+logs/
