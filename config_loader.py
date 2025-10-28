@@ -1,32 +1,31 @@
-import yaml
 import os
-from rich.console import Console
-
-console = Console()
+from dotenv import load_dotenv
 
 class ConfigLoader:
-    """Lädt und validiert die YAML-Konfiguration."""
+    """Lädt Konfiguration aus .env Datei."""
 
-    def __init__(self, path="backup.yaml"):
-        self.path = path
-        self.config = None
+    def __init__(self):
+        load_dotenv()
 
     def load(self):
-        if not os.path.exists(self.path):
-            console.print(f"[red]Fehler:[/red] Konfigurationsdatei {self.path} nicht gefunden.")
-            raise FileNotFoundError(self.path)
-
-        with open(self.path, "r") as f:
-            self.config = yaml.safe_load(f)
-
-        self._validate()
-        return self.config
-
-    def _validate(self):
-        if "backup" not in self.config:
-            raise ValueError("Fehlender Abschnitt: 'backup'")
-        required = ["db_host", "db_name", "db_user", "db_password", "data_dirs", "output_dir"]
-        for key in required:
-            if key not in self.config["backup"]:
-                raise ValueError(f"Fehlender Parameter in backup: {key}")
-
+        config = {
+            "db": {
+                "host": os.getenv("DB_HOST", "localhost"),
+                "name": os.getenv("DB_NAME", "paperless"),
+                "user": os.getenv("DB_USER", "paperless"),
+                "password": os.getenv("DB_PASSWORD", "paperless"),
+            },
+            "backup": {
+                "retention_days": int(os.getenv("BACKUP_RETENTION_DAYS", "7")),
+                "output_dir": os.getenv("BACKUP_OUTPUT_DIR", "./output"),
+            },
+            "dracoon": {
+                "base_url": os.getenv("DRACOON_BASE_URL"),
+                "client_id": os.getenv("DRACOON_CLIENT_ID"),
+                "client_secret": os.getenv("DRACOON_CLIENT_SECRET"),
+                "username": os.getenv("DRACOON_USERNAME"),
+                "password": os.getenv("DRACOON_PASSWORD"),
+                "target_path": os.getenv("DRACOON_TARGET_PATH", "/Backups/Paperless/"),
+            },
+        }
+        return config

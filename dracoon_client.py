@@ -17,13 +17,13 @@ class DracoonClient:
         self.password = self.cfg["password"]
         self.client_id = self.cfg.get("client_id")
         self.client_secret = self.cfg.get("client_secret")
-        self.room_id = int(self.cfg["target_room_id"])
+        self.target_path = self.cfg.get("target_path", "/Backups/Paperless/")
         self.retention_days = int(config["backup"]["retention_days"])
         self.headless = logger.headless
         self.dracoon = None
 
     async def connect(self):
-        """OAuth2 Login mit aktuellem Password-Flow (Octavio-API)"""
+        """OAuth2 Login mit Password-Flow"""
         try:
             self.dracoon = DRACOON(
                 base_url=self.base_url,
@@ -38,20 +38,18 @@ class DracoonClient:
                 self.password
             )
 
-            # nur wenn connection zurückkommt, Token-Infos ausgeben
             if connection:
                 try:
-                    token_info = connection.json()
-                    expires_in = token_info.get("expires_in")
-                    if expires_in:
-                        minutes = round(expires_in / 60, 1)
+                    # neuere API-Version: connection ist vom Typ DRACOONConnection
+                    token_data = getattr(connection, "data", None)
+                    if token_data and "expires_in" in token_data:
+                        minutes = round(token_data["expires_in"] / 60, 1)
                         self.logger.info(
                             f"Erfolgreich bei Dracoon angemeldet – Token gültig für etwa {minutes} Minuten."
                         )
                     else:
                         self.logger.info("Erfolgreich bei Dracoon angemeldet.")
                 except Exception:
-                    # falls das Objekt keine json()-Methode hat
                     self.logger.info("Erfolgreich bei Dracoon angemeldet (Token-Infos nicht verfügbar).")
             else:
                 self.logger.error("Dracoon-Login gab keine Verbindung zurück.")
@@ -63,7 +61,6 @@ class DracoonClient:
             self.logger.error(f"Allgemeiner Verbindungsfehler: {e}")
             raise
 
-
     async def upload_file(self, file_path: str):
         """Lädt Datei über Pfad hoch, prüft CRC und löscht lokal bei Erfolg."""
         if not self.dracoon:
@@ -73,16 +70,12 @@ class DracoonClient:
         self.logger.upload_event("Starte Upload", file=file_name)
 
         try:
-            # Zielpfad im Dracoon-Raum (aktuell statisch, später konfigurierbar)
-            target_path = self.cfg.get("target_path", "/Backup/")
-
-            # Upload durchführen – ohne encrypt-Parameter
             uploaded = await self.dracoon.upload(
                 file_path=file_path,
-                target_path=target_path
+                target_path=self.target_path
             )
 
-            # CRC prüfen
+            # Lokale CRC32 berechnen
             crc_local = self._crc32_file(file_path)
             size_mb = os.path.getsize(file_path) / 1024 / 1024
 
@@ -93,13 +86,13 @@ class DracoonClient:
                 crc=crc_local
             )
 
+            # Lokale Datei löschen
             os.remove(file_path)
             self.logger.upload_event("Lokale Datei gelöscht", file=file_name)
 
         except Exception as e:
             self.logger.error(f"Upload fehlgeschlagen: {e}", file=file_name)
             raise
-
 
     async def cleanup_old_backups(self):
         """Löscht alte Backups anhand Namensmuster und Retention."""
@@ -108,8 +101,7 @@ class DracoonClient:
 
         try:
             now = datetime.utcnow()
-            target_path = self.cfg.get("target_path", "/Backups/Paperless/")
-            result = await self.dracoon.nodes.get_nodes(parent_path=target_path)
+            result = await self.dracoon.nodes.get_nodes(parent_path=self.target_path)
 
             for item in result.items:
                 name = item.name

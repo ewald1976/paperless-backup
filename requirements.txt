@@ -1,10 +1,16 @@
-# Core dependencies
-pyyaml
-rich
+# --- Core Dependencies ---
+asyncio
+python-dotenv>=1.0.1
 
-# Paperless Backup logic
-dracoon
+# --- Backup / Compression ---
+psycopg2-binary>=2.9.9   # Für PostgreSQL-Dumps
+aiofiles>=24.1.0         # Asynchrones Datei-Handling (optional, falls später nötig)
 
-# Optional: falls du virtualenv noch nicht global installiert hast
-# (nur bei frischen Systemen notwendig)
-# virtualenv
+# --- DRACOON API ---
+dracoon>=1.13.0           # Octavio Simone's async API (Password Flow kompatibel)
+
+# --- Logging / Utility ---
+rich>=13.7.0              # Für farbige CLI-Ausgabe (später für GUI-Modus nutzbar)
+
+# --- Optional Future Features ---
+requests>=2.32.3          # Für Webhooks / Home Assistant-Integration
