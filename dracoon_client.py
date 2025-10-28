@@ -80,7 +80,12 @@ class DracoonClient:
 
         try:
             now = datetime.utcnow()
-            nodes = await self.dracoon.nodes.search_nodes(search_string="paperless_backup_", depth=-1)
+            # suche alle Nodes, die 'paperless_backup_' im Namen enthalten
+            nodes = await self.dracoon.nodes.search_nodes("paperless_backup_")
+
+            if not nodes.items:
+                self.logger.info("Keine alten Backups im Dracoon gefunden.")
+                return
 
             for item in nodes.items:
                 name = item.name
@@ -99,6 +104,7 @@ class DracoonClient:
 
         except Exception as e:
             self.logger.error(f"Fehler bei Remote-Cleanup: {e}")
+
 
     def _crc32_file(self, path: str) -> str:
         """Berechnet CRC32 Prüfsumme."""
