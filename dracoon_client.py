@@ -26,7 +26,14 @@ class DracoonClient:
         """OAuth2 Login mit aktueller Dracoon-PyPI-Version."""
         try:
             self.dracoon = DRACOON(base_url=self.base_url, raise_on_err=True)
-            await self.dracoon.connect(username=self.username, password=self.password)
+        await self.dracoon.connect(
+            username=self.username,
+            password=self.password,
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            grant_type="password"
+            )       
+
             self.logger.info("Erfolgreich bei Dracoon angemeldet.")
         except DRACOONHttpError as e:
             self.logger.error(f"Fehler bei Dracoon-Login: {e}")
