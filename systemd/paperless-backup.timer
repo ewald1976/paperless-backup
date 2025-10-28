@@ -1,0 +1,10 @@
+[Unit]
+Description=Paperless Backup – täglicher Cron-Ersatz
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+Unit=paperless-backup.service
+
+[Install]
+WantedBy=timers.target

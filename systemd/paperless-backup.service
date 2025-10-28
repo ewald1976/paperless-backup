@@ -1,0 +1,23 @@
+[Unit]
+Description=Paperless Backup Service (mit Dracoon Upload)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 🧠 Bitte anpassen:
+# User: Der Linux-Benutzer, unter dem das Backup läuft
+# WorkingDirectory: Absoluter Pfad zum Projektverzeichnis
+# Beispiel: /home/<user>/paperless-backup oder /opt/paperless-backup
+
+User=<user>
+WorkingDirectory=<path-to-your-paperless-backup>
+ExecStart=<path-to-your-paperless-backup>/venv/bin/python <path-to-your-paperless-backup>/main.py --headless
+EnvironmentFile=<path-to-your-paperless-backup>/.env
+Restart=on-failure
+RestartSec=30
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
