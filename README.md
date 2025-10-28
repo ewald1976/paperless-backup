@@ -37,7 +37,7 @@ Das Tool erstellt vollständige Backups bestehend aus:
 ### 1️⃣ Repository klonen
 
 ```bash
-git clone https://github.com/<user>/paperless-backup.git
+git clone https://github.com/ewald1976/paperless-backup.git
 cd paperless-backup
 ```
 
