@@ -101,25 +101,31 @@ class DracoonClient:
 
         try:
             now = datetime.utcnow()
-            result = await self.dracoon.nodes.get_nodes(parent_path=self.target_path)
+            # aktuelle Nodes im Zielpfad abfragen
+            nodes = await self.dracoon.nodes.get_nodes(parent_id=self.room_id)
 
-            for item in result.items:
+            for item in nodes.items:
                 name = item.name
                 created = item.created_at
 
                 if (
                     name.startswith("paperless_backup_")
                     and name.endswith(".tar.gz")
-                    and created < (now - timedelta(days=self.retention_days))
                 ):
-                    self.logger.delete_event("Lösche altes Remote-Backup", file=name)
-                    await self.dracoon.nodes.delete_node(item.id)
+                    # Datum prüfen
+                    age_days = (now - created).days if created else 0
+                    if age_days > self.retention_days:
+                        self.logger.delete_event(
+                            f"Lösche altes Remote-Backup ({age_days} Tage alt)",
+                            file=name,
+                        )
+                        await self.dracoon.nodes.delete_node(item.id)
                 else:
-                    self.logger.info(f"Überspringe Datei im Dracoon-Raum: {name}")
+                    self.logger.info(f"Überspringe Datei im Dracoon-Ordner: {name}")
 
         except Exception as e:
             self.logger.error(f"Fehler bei Remote-Cleanup: {e}")
-
+            
     def _crc32_file(self, path: str) -> str:
         """Berechnet CRC32 Prüfsumme."""
         prev = 0
