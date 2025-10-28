@@ -2,7 +2,7 @@ import os
 import zlib
 import asyncio
 from datetime import datetime, timedelta
-from dracoon import DRACOON
+from dracoon import DRACOON, OAuth2ConnectionType
 from dracoon.errors import DRACOONHttpError
 
 
@@ -23,7 +23,7 @@ class DracoonClient:
         self.dracoon = None
 
     async def connect(self):
-        """OAuth2 Login mit aktuellem Password Grant Flow"""
+        """OAuth2 Login mit aktuellem Password-Flow (Octavio-API)"""
         try:
             self.dracoon = DRACOON(
                 base_url=self.base_url,
@@ -31,11 +31,16 @@ class DracoonClient:
                 client_secret=self.client_secret,
                 raise_on_err=True
             )
-            await self.dracoon.connect(
-                username=self.username,
-                password=self.password,
+
+            connection = await self.dracoon.connect(
+                OAuth2ConnectionType.password_flow,
+                self.username,
+                self.password
             )
-            self.logger.info("Erfolgreich bei Dracoon angemeldet.")
+
+            self.logger.info(
+                f"Erfolgreich bei Dracoon angemeldet – Token gültig bis {connection.expiration_date}"
+            )
         except DRACOONHttpError as e:
             self.logger.error(f"Fehler bei Dracoon-Login: {e}")
             raise
@@ -58,7 +63,7 @@ class DracoonClient:
 
             # Lokale CRC32 berechnen
             crc_local = self._crc32_file(file_path)
-            # Remote-Hash abrufen (kann None sein, daher optional)
+            # Remote-Hash abrufen (kann None sein)
             crc_remote = getattr(upload, "hash", None)
             self.logger.upload_event("Upload abgeschlossen", file=file_name, crc=crc_remote)
 
@@ -77,7 +82,6 @@ class DracoonClient:
                     f"CRC32-Fehler oder kein Remote-Hash! Lokal={crc_local}, Remote={crc_remote}",
                     file=file_name,
                 )
-                # Remote-Datei löschen, um inkonsistente Uploads zu vermeiden
                 await self.dracoon.nodes.delete_node(upload.id)
 
         except Exception as e:
