@@ -108,10 +108,13 @@ class DracoonClient:
 
         try:
             now = datetime.utcnow()
-            result = await self.dracoon.nodes.get_room_nodes(room_id=self.room_id)
+            target_path = self.cfg.get("target_path", "/Backups/Paperless/")
+            result = await self.dracoon.nodes.get_nodes(parent_path=target_path)
+
             for item in result.items:
                 name = item.name
                 created = item.created_at
+
                 if (
                     name.startswith("paperless_backup_")
                     and name.endswith(".tar.gz")
