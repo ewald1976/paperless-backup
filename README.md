@@ -65,6 +65,9 @@ DB_NAME=paperless
 DB_USER=paperless
 DB_PASSWORD=paperless
 
+# Offsite Upload aktivieren (true/false)
+OFFSITE=true
+
 # Dracoon Connection
 DRACOON_BASE_URL=https://example.dracoon.com
 DRACOON_CLIENT_ID=xxxxxxxxxxxxxxxx
