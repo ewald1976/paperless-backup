@@ -73,7 +73,7 @@ class DracoonClient:
         self.logger.upload_event("Starte Upload", file=file_name)
 
         try:
-            upload = await self.dracoon.nodes.upload_file(
+            upload = await self.dracoon.nodes.upload(
                 file_path=file_path, target_id=self.room_id
             )
 
