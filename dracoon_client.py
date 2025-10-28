@@ -37,17 +37,32 @@ class DracoonClient:
                 self.username,
                 self.password
             )
-            expires_in = token_info.get("expires_in", "unbekannt")
 
-            self.logger.info(
-                f"Erfolgreich bei Dracoon angemeldet – Token gültig bis {expires_in}"
-            )
+            # nur wenn connection zurückkommt, Token-Infos ausgeben
+            if connection:
+                try:
+                    token_info = connection.json()
+                    expires_in = token_info.get("expires_in")
+                    if expires_in:
+                        minutes = round(expires_in / 60, 1)
+                        self.logger.info(
+                            f"Erfolgreich bei Dracoon angemeldet – Token gültig für etwa {minutes} Minuten."
+                        )
+                    else:
+                        self.logger.info("Erfolgreich bei Dracoon angemeldet.")
+                except Exception:
+                    # falls das Objekt keine json()-Methode hat
+                    self.logger.info("Erfolgreich bei Dracoon angemeldet (Token-Infos nicht verfügbar).")
+            else:
+                self.logger.error("Dracoon-Login gab keine Verbindung zurück.")
+
         except DRACOONHttpError as e:
             self.logger.error(f"Fehler bei Dracoon-Login: {e}")
             raise
         except Exception as e:
             self.logger.error(f"Allgemeiner Verbindungsfehler: {e}")
             raise
+
 
     async def upload_file(self, file_path: str):
         """Lädt Datei hoch, prüft CRC, löscht lokal bei Erfolg."""
