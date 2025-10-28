@@ -7,6 +7,13 @@ from config_loader import ConfigLoader
 from dracoon_client import DracoonClient
 from logger import JsonLogger
 from backup_manager import BackupManager
+import asyncio
+
+
+async def run_dracoon_tasks(client, archive_path):
+    """Führt Upload und Remote-Cleanup im selben Eventloop aus."""
+    await client.upload_file(archive_path)
+    await client.cleanup_old_backups()
 
 
 def main():
@@ -69,14 +76,20 @@ def main():
                 else:
                     logger.info(f"Überspringe nicht vorhandenes Verzeichnis: {d}")
 
+        # --- Dump im Container löschen ---
+        try:
+            os.system(f"docker exec {config['backup']['db_container']} rm -f {db_dump_path}")
+            logger.info(f"→ Dump im Container gelöscht: {db_dump_path}")
+        except Exception as e:
+            logger.error(f"Konnte Dump im Container nicht löschen: {e}")
+
+        # --- Archiv fertig ---
         logger.backup_event("Backup erfolgreich erstellt", file=archive_path)
         logger.backup_event("Backup abgeschlossen", file=archive_path)
 
-        # --- Upload zu Dracoon ---
+        # --- Upload & Remote-Cleanup in einem Loop ---
         dracoon_client = DracoonClient(config, logger)
-        import asyncio
-        asyncio.run(dracoon_client.upload_file(archive_path))
-        asyncio.run(dracoon_client.cleanup_old_backups())
+        asyncio.run(run_dracoon_tasks(dracoon_client, archive_path))
 
     except Exception as e:
         logger.error(f"Fehler während des Backups: {e}")
