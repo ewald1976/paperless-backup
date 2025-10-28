@@ -30,4 +30,13 @@ class ConfigLoader:
                 "target_path": os.getenv("DRACOON_TARGET_PATH", "/Backups/Paperless/"),
             },
         }
+
+        # Kompatibilitäts-Aliase, falls ältere Codeteile db_* Keys erwarten
+        config["backup"].update({
+            "db_host": config["db"]["host"],
+            "db_name": config["db"]["name"],
+            "db_user": config["db"]["user"],
+            "db_password": config["db"]["password"],
+        })
+
         return config
