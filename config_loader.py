@@ -18,7 +18,9 @@ class ConfigLoader:
             "backup": {
                 "retention_days": int(os.getenv("BACKUP_RETENTION_DAYS", "7")),
                 "output_dir": os.getenv("BACKUP_OUTPUT_DIR", "./output"),
-            },
+                "log_file": os.getenv("BACKUP_LOG_FILE", "./backup.log"),
+},
+
             "dracoon": {
                 "base_url": os.getenv("DRACOON_BASE_URL"),
                 "client_id": os.getenv("DRACOON_CLIENT_ID"),
