@@ -34,7 +34,6 @@ class DracoonClient:
             await self.dracoon.connect(
                 username=self.username,
                 password=self.password,
-                grant_type="password"
             )
             self.logger.info("Erfolgreich bei Dracoon angemeldet.")
         except DRACOONHttpError as e:
