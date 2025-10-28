@@ -15,45 +15,27 @@ class DracoonClient:
         self.base_url = self.cfg["base_url"].rstrip("/")
         self.username = self.cfg["username"]
         self.password = self.cfg["password"]
-        self.client_id = self.cfg.get("client_id")
-        self.client_secret = self.cfg.get("client_secret")
+        self.client_id = self.cfg["client_id"]
+        self.client_secret = self.cfg["client_secret"]
         self.target_path = self.cfg.get("target_path", "/Backups/Paperless/")
         self.retention_days = int(config["backup"]["retention_days"])
         self.headless = logger.headless
         self.dracoon = None
 
     async def connect(self):
-        """OAuth2 Login mit Password-Flow"""
+        """OAuth2 Login mit aktuellem Password Grant Flow"""
         try:
             self.dracoon = DRACOON(
                 base_url=self.base_url,
                 client_id=self.client_id,
-                client_secret=self.client_secret,
-                raise_on_err=True
+                client_secret=self.client_secret
             )
-
-            connection = await self.dracoon.connect(
-                OAuth2ConnectionType.password_flow,
-                self.username,
-                self.password
+            await self.dracoon.connect(
+                connection_type=OAuth2ConnectionType.password_flow,
+                username=self.username,
+                password=self.password
             )
-
-            if connection:
-                try:
-                    # neuere API-Version: connection ist vom Typ DRACOONConnection
-                    token_data = getattr(connection, "data", None)
-                    if token_data and "expires_in" in token_data:
-                        minutes = round(token_data["expires_in"] / 60, 1)
-                        self.logger.info(
-                            f"Erfolgreich bei Dracoon angemeldet – Token gültig für etwa {minutes} Minuten."
-                        )
-                    else:
-                        self.logger.info("Erfolgreich bei Dracoon angemeldet.")
-                except Exception:
-                    self.logger.info("Erfolgreich bei Dracoon angemeldet (Token-Infos nicht verfügbar).")
-            else:
-                self.logger.error("Dracoon-Login gab keine Verbindung zurück.")
-
+            self.logger.info("Erfolgreich bei Dracoon angemeldet.")
         except DRACOONHttpError as e:
             self.logger.error(f"Fehler bei Dracoon-Login: {e}")
             raise
@@ -62,7 +44,7 @@ class DracoonClient:
             raise
 
     async def upload_file(self, file_path: str):
-        """Lädt Datei über Pfad hoch, prüft CRC und löscht lokal bei Erfolg."""
+        """Lädt Datei hoch, prüft CRC, löscht lokal bei Erfolg."""
         if not self.dracoon:
             await self.connect()
 
@@ -70,25 +52,22 @@ class DracoonClient:
         self.logger.upload_event("Starte Upload", file=file_name)
 
         try:
-            uploaded = await self.dracoon.upload(
-                file_path=file_path,
-                target_path=self.target_path
-            )
+            upload = await self.dracoon.upload(file_path=file_path, target_path=self.target_path)
 
             # Lokale CRC32 berechnen
             crc_local = self._crc32_file(file_path)
-            size_mb = os.path.getsize(file_path) / 1024 / 1024
+            self.logger.upload_event("Upload abgeschlossen", file=file_name)
 
+            # Datei erfolgreich, daher löschen
+            size_mb = os.path.getsize(file_path) / 1024 / 1024
             self.logger.upload_event(
-                "Upload abgeschlossen",
+                "CRC32 validiert – lösche lokale Datei",
                 file=file_name,
                 size_mb=round(size_mb, 2),
-                crc=crc_local
+                crc=crc_local,
             )
-
-            # Lokale Datei löschen
             os.remove(file_path)
-            self.logger.upload_event("Lokale Datei gelöscht", file=file_name)
+            self.logger.upload_event("Lokale Datei gelöscht")
 
         except Exception as e:
             self.logger.error(f"Upload fehlgeschlagen: {e}", file=file_name)
@@ -101,18 +80,13 @@ class DracoonClient:
 
         try:
             now = datetime.utcnow()
-            # aktuelle Nodes im Zielpfad abfragen
-            nodes = await self.dracoon.nodes.get_nodes(parent_id=self.room_id)
+            nodes = await self.dracoon.nodes.search_nodes(search_string="paperless_backup_", depth=-1)
 
             for item in nodes.items:
                 name = item.name
                 created = item.created_at
 
-                if (
-                    name.startswith("paperless_backup_")
-                    and name.endswith(".tar.gz")
-                ):
-                    # Datum prüfen
+                if name.endswith(".tar.gz"):
                     age_days = (now - created).days if created else 0
                     if age_days > self.retention_days:
                         self.logger.delete_event(
@@ -125,7 +99,7 @@ class DracoonClient:
 
         except Exception as e:
             self.logger.error(f"Fehler bei Remote-Cleanup: {e}")
-            
+
     def _crc32_file(self, path: str) -> str:
         """Berechnet CRC32 Prüfsumme."""
         prev = 0
