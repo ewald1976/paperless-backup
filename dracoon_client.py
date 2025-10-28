@@ -22,24 +22,28 @@ class DracoonClient:
         self.headless = logger.headless
         self.dracoon = None
 
-    async def connect(self):
-        """OAuth2 Login mit aktuellem Password Grant Flow"""
-        try:
-            self.dracoon = DRACOON(base_url=self.base_url, raise_on_err=True)
-            await self.dracoon.connect(
-                username=self.username,
-                password=self.password,
+        async def connect(self):
+            """OAuth2 Login mit aktuellem Password Grant Flow"""
+            try:
+                self.dracoon = DRACOON(
+                base_url=self.base_url,
                 client_id=self.client_id,
                 client_secret=self.client_secret,
+                raise_on_err=True
+            )
+                await self.dracoon.connect(
+                username=self.username,
+                password=self.password,
                 grant_type="password"
             )
-            self.logger.info("Erfolgreich bei Dracoon angemeldet.")
-        except DRACOONHttpError as e:
-            self.logger.error(f"Fehler bei Dracoon-Login: {e}")
-            raise
-        except Exception as e:
-            self.logger.error(f"Allgemeiner Verbindungsfehler: {e}")
-            raise
+                self.logger.info("Erfolgreich bei Dracoon angemeldet.")
+            except DRACOONHttpError as e:
+                self.logger.error(f"Fehler bei Dracoon-Login: {e}")
+                raise
+            except Exception as e:
+                self.logger.error(f"Allgemeiner Verbindungsfehler: {e}")
+                raise
+
 
     async def upload_file(self, file_path: str):
         """Lädt Datei hoch, prüft CRC, löscht lokal bei Erfolg."""
