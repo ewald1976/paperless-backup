@@ -73,14 +73,13 @@ class DracoonClient:
         self.logger.upload_event("Starte Upload", file=file_name)
 
         try:
-            # Definierter Zielpfad im Dracoon-Raum (aus YAML-Konfiguration)
-            target_path = self.cfg.get("target_path", "/Backup/")
+            # Zielpfad im Dracoon-Raum (aktuell statisch, später konfigurierbar)
+            target_path = self.cfg.get("target_path", "/Backups/Paperless/")
 
-            # Upload durchführen (verschlüsselt = False)
+            # Upload durchführen – ohne encrypt-Parameter
             uploaded = await self.dracoon.upload(
                 file_path=file_path,
-                target_path=target_path,
-                encrypt=False
+                target_path=target_path
             )
 
             # CRC prüfen
