@@ -26,8 +26,11 @@ class GoogleDriveClient:
             self.command += ["--config", config["google"]["rclone_config"]]
 
     def _run(self, *arguments):
-        result = subprocess.run(self.command + list(arguments), check=True,
+        result = subprocess.run(self.command + list(arguments),
                                 capture_output=True, text=True)
+        if result.returncode:
+            detail = result.stderr.strip() or f"Exit-Code {result.returncode}"
+            raise RuntimeError(f"rclone {arguments[0]} fehlgeschlagen: {detail}")
         return result.stdout
 
     def _target(self, name):
