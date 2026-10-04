@@ -27,7 +27,7 @@ class BackupTests(unittest.TestCase):
             path = Path(directory) / "backup.tar.gz"
             path.write_bytes(b"backup")
             client = self.client()
-            client._run = Mock(side_effect=["", json.dumps({"Size": 6, "Hashes": {"MD5": hashlib.md5(b"backup").hexdigest()}})])
+            client._run = Mock(side_effect=["", json.dumps({"Size": 6, "Hashes": {"md5": hashlib.md5(b"backup").hexdigest()}})])
             asyncio.run(client.upload_file(str(path)))
             self.assertTrue(path.exists())
 

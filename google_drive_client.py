@@ -44,7 +44,8 @@ class GoogleDriveClient:
         self.logger.upload_event("Starte Google-Drive-Upload", file=path.name)
         self._run("copyto", str(path), target, "--checksum")
         metadata = json.loads(self._run("lsjson", target, "--stat", "--hash"))
-        remote_hash = metadata.get("Hashes", {}).get("MD5", "")
+        hashes = {key.lower(): value for key, value in metadata.get("Hashes", {}).items()}
+        remote_hash = hashes.get("md5", "")
         if metadata.get("Size") != path.stat().st_size or remote_hash.lower() != digest:
             raise RuntimeError("Google-Drive-Prüfsumme oder Dateigröße stimmt nicht überein")
         self.logger.upload_event("Google-Drive-Upload verifiziert; Archiv bleibt lokal", file=path.name, md5=digest)
