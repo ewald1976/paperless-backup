@@ -15,7 +15,7 @@ class JsonLogger:
     def __init__(self, log_file: str, headless: bool = False):
         self.log_file = log_file
         self.headless = headless
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        os.makedirs(os.path.dirname(log_file) or ".", exist_ok=True)
 
     def _timestamp(self):
         return datetime.now().isoformat(timespec="seconds")

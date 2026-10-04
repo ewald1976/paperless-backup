@@ -1,147 +1,124 @@
-# 🗂️ Paperless Backup Tool
+# Paperless Backup Tool
 
-Automatisches Backup-Tool für [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx)
-entwickelt in **Python**, mit **Upload zu Dracoon** und **optionalem Offsite-Toggle**.
+Python-Tool für PostgreSQL-Dumps und Paperless-Verzeichnisse als `.tar.gz`,
+mit optionalem Upload zu **Dracoon oder Google Drive**.
 
-Das Tool erstellt vollständige Backups bestehend aus:
-- PostgreSQL-Datenbank-Dump
-- Paperless-Daten- und Medienverzeichnissen
-- Komprimiertem Archiv im `.tar.gz`-Format
-- Optionalem Upload in einen definierten Dracoon-Datenraum
-- Automatischer Bereinigung alter Backups gemäß Aufbewahrungszeitraum
+## Installation
 
----
-
-## 🚀 Funktionen
-
-- 🔄 Vollautomatisiertes Offsite-Backup über die Dracoon-API
-- 🧮 CRC32-Prüfung nach Upload (Integritätssicherung)
-- 🧹 Automatische Bereinigung alter Backups (konfigurierbar)
-- 🪶 Headless-Modus für Cron oder systemd-Timer
-- 🟡 Retro-Konsolenmodus im interaktiven Betrieb (Amberfarben)
-- 🧾 JSON-Logging mit Zeitstempel und Ereignistyp
-- 💾 Lokaler Backup-Only-Modus über `OFFSITE=false`
-
----
-
-## ⚙️ Voraussetzungen
-
-- **Linux oder macOS** mit `docker` und `systemd` (optional)
-- **Python 3.11+**
-- `pg_dump` im Container verfügbar
-- Zugriff auf einen **Dracoon-Account** mit API-Client (Password-Flow aktiviert)
-- Paperless-ngx **Docker-Version mit PostgreSQL**
-  → siehe [Paperless-ngx Docker Repository](https://github.com/paperless-ngx/paperless-ngx)
-
----
-
-## 🧩 Installation
+Voraussetzungen: Python 3.11+, Docker mit PostgreSQL-Container und Zugriff auf
+die Paperless-Verzeichnisse auf dem Host. Für Google Drive zusätzlich `rclone`.
 
 ```bash
-git clone https://github.com/ewald1976/paperless-backup.git
-cd paperless-backup
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
----
+## Konfiguration
 
-## ⚙️ Konfiguration
-
-Erstelle oder bearbeite die Datei `.env` im Projektverzeichnis:
+Passe `.env` an deine Installation an:
 
 ```dotenv
-# Paperless Backup Configuration
 DB_CONTAINER=paperless-db-1
 DB_NAME=paperless
 DB_USER=paperless
 DB_PASSWORD=paperless
-
-# Offsite Upload aktivieren (true/false)
+BACKUP_DATA_DIRS=/data/data,/data/media,/data/consume,/data/export
+BACKUP_OUTPUT_DIR=./output
 OFFSITE=true
-
-# Dracoon Connection
-DRACOON_BASE_URL=https://example.dracoon.com
-DRACOON_CLIENT_ID=xxxxxxxxxxxxxxxx
-DRACOON_CLIENT_SECRET=xxxxxxxxxxxxxxxx
-DRACOON_USERNAME=paperless-backup
-DRACOON_PASSWORD=topsecret
-DRACOON_TARGET_PATH=/Backups/Paperless/
-
-# Backup Settings
+PROVIDER=dracoon
 RETENTION_DAYS=7
 LOG_FILE=backup.log
 ```
 
-Wenn `OFFSITE=false`, wird **nur ein lokales Backup erstellt**
-ohne Dracoon-Upload oder Remote-Cleanup.
+`BACKUP_DATA_DIRS` enthält kommagetrennte **Host-Pfade**, keine Container-Pfade.
+Alle angegebenen Verzeichnisse müssen existieren. Optional nicht vorhandene
+Consume-/Export-Verzeichnisse aus der Liste entfernen. Fehlende Pfade brechen
+das Backup ab, damit kein unvollständiges Archiv als erfolgreich gemeldet wird.
+Verzeichnisnamen müssen eindeutig sein, weil sie im Archiv als Basename erscheinen.
 
----
+`OFFSITE=false` erstellt nur das lokale Archiv und benötigt keine Cloud-Zugangsdaten.
+`PROVIDER=dracoon` bleibt der Standard. `BACKUP_RETENTION_DAYS` und
+`BACKUP_LOG_FILE` werden ebenfalls unterstützt und haben Vorrang vor den alten Namen.
 
-## ▶️ Nutzung
+### Google Drive
 
-### Manuell:
-```bash
-source venv/bin/activate
-python main.py
+1. Installiere [rclone](https://rclone.org/install/).
+2. Führe `rclone config` **als den Benutzer des späteren Backup-Dienstes** aus.
+3. Lege einen Remote namens `gdrive` vom Typ Google Drive an und autorisiere ihn
+   per OAuth im Browser. Für Server ohne Browser siehe
+   [rclone-Einrichtung auf einem entfernten Rechner](https://rclone.org/remote_setup/).
+4. Setze in `.env`:
+
+```dotenv
+OFFSITE=true
+PROVIDER=google
+GOOGLE_DRIVE_REMOTE=gdrive:Backups/Paperless
+# Optional, besonders bei systemd: absoluter Konfigurationspfad
+RCLONE_CONFIG=/home/your-user/.config/rclone/rclone.conf
 ```
 
-### Headless (z. B. für Cron oder systemd):
+Teste den Zugang mit `rclone lsd gdrive:`. Die rclone-Konfiguration enthält
+OAuth-Tokens: nur für den Dienstbenutzer lesbar halten und nicht ins Repository aufnehmen.
+Verwende einen dedizierten Backup-Ordner und einen gewöhnlichen Drive-Remote.
+
+Der Upload vergleicht die lokale MD5-Prüfsumme und Dateigröße mit den von Drive
+zurückgelieferten Werten. Fehlende oder abweichende Prüfsummen führen zum Fehler.
+Siehe [rclone Google Drive](https://rclone.org/drive/) und
+[lsjson mit Prüfsummen](https://rclone.org/commands/rclone_lsjson/).
+
+Nach verifiziertem Upload werden nur unmittelbar im Zielordner liegende Dateien
+mit dem Muster `paperless_backup_YYYY-MM-DD_HH-MM-SS[_ffffff].tar.gz` bereinigt.
+Das Datum im Dateinamen entscheidet über `RETENTION_DAYS`; Unterordner und andere
+Dateinamen bleiben erhalten. Standardmäßig verschiebt rclone Drive-Dateien in den
+Papierkorb. Keine Einstellung `use_trash=false` verwenden, wenn das gewünscht ist.
+
+### Dracoon
+
+Setze `PROVIDER=dracoon` und die `DRACOON_*`-Werte aus `.env.example`.
+Der bisherige SDK-Upload bleibt bestehen. Eine Remote-Prüfsumme wird hier derzeit
+**nicht verifiziert**. Die bisherige globale Remote-Bereinigung ist deaktiviert,
+weil sie Dateien außerhalb des Zielordners erfassen konnte.
+
+## Ausführen
+
 ```bash
+python main.py
 python main.py --headless
 ```
 
----
+Fehler liefern Exit-Code 1, Erfolg Exit-Code 0. JSON-Logs stehen in `LOG_FILE`.
+Lokale Archive bleiben auch nach erfolgreichem Upload erhalten. Es gibt derzeit
+keine automatische lokale Bereinigung; Speicherbedarf entsprechend einplanen.
+Starte keine parallelen Backupläufe.
 
-## ⚙️ Automatischer Start via systemd
+Die Dateien werden während des laufenden Paperless-Betriebs gelesen. Für einen
+konsistenten Stand Schreibzugriffe/Importer während des gesamten Backups pausieren.
+Die Archive sind nicht zusätzlich verschlüsselt. Vor produktivem Einsatz einen
+Restore in einer separaten Installation testen: Dump mit `pg_restore` einspielen,
+Verzeichnisse zurückkopieren und Paperless-Version sowie Besitzerrechte beachten.
+Deployment-Konfiguration und Secrets separat sichern.
 
-Die Systemd-Units (`paperless-backup.service` und `.timer`)
-liegen im Verzeichnis `systemd/`.
+## systemd
 
-Beispiel:
-
-```ini
-User=<user>
-WorkingDirectory=<path-to-your-paperless-backup>
-ExecStart=<path-to-your-paperless-backup>/venv/bin/python <path-to-your-paperless-backup>/main.py --headless
-EnvironmentFile=<path-to-your-paperless-backup>/.env
-```
-
-Installation:
+Passe `User`, `WorkingDirectory`, `ExecStart` und `EnvironmentFile` in
+`systemd/paperless-backup.service` an, bevor du die Units installierst.
+Der Benutzer benötigt Docker-, Verzeichnis- und gegebenenfalls rclone-Zugriff.
 
 ```bash
-sudo cp systemd/paperless-backup.* /etc/systemd/system/
+sudo cp systemd/paperless-backup.service systemd/paperless-backup.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now paperless-backup.timer
 ```
 
-Standardmäßig tägliches Backup um **03:00 Uhr**.
-Bei ausgeschaltetem System wird der Lauf nachgeholt (`Persistent=true`).
+Der Timer läuft täglich um 03:00 Uhr und holt ausgefallene Läufe nach.
 
----
-
-## 🧾 Log-Format
-
-Das Tool schreibt strukturierte JSON-Logs, z. B.:
-
-```json
-{"timestamp": "2025-10-29T08:23:03", "event": "UPLOAD_EVENT", "message": "CRC32 validiert – lösche lokale Datei"}
-```
-
-Diese Logs können z. B. in **Home Assistant**, **Grafana** oder **Kibana** ausgewertet werden.
-
----
-
-## 📦 Deinstallation
+## Tests
 
 ```bash
-sudo systemctl disable --now paperless-backup.timer
-sudo rm /etc/systemd/system/paperless-backup.*
-sudo systemctl daemon-reload
+python3 -m unittest discover -s tests -v
 ```
 
----
-
-© 2025 – Paperless Backup Tool (Python + Dracoon API)
-Maintainer: [github.com/ewald1976](https://github.com/ewald1976)
+Die Tests verwenden simulierte Cloud-Aufrufe; echte Cloud-Uploads und Restore
+müssen mit deiner Installation geprüft werden.

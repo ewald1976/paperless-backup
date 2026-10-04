@@ -21,3 +21,6 @@ config/*.yaml
 logs/
 
 .env
+
+# OAuth credentials
+rclone.conf

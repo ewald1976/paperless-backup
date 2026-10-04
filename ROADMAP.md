@@ -1,6 +1,13 @@
 # 🧭 Paperless Backup – Roadmap
 
-## 🏷️ Version 2.0.0 (Geplant)
+## Aktueller Stand
+
+Dracoon und Google Drive sind über `PROVIDER=dracoon|google` auswählbar.
+Google Drive nutzt rclone mit MD5-Verifikation und ordnergebundener Retention.
+Offen: sichere Dracoon-Retention, Dracoon-Prüfsummen, lokale Retention,
+Verschlüsselung und automatisierte Restore-Prüfung.
+
+## 🏷️ Weitere Planung
 
 ### 🔸 1. Multi‑Provider‑Support
 Ziel: Auswahl des Speicherdienstes über `.env`:
@@ -14,7 +21,7 @@ PROVIDER=dracoon | owncloud | google | s3
 |-----------|------------|--------|
 | 🟢 Dracoon | `dracoon` | läuft |
 | 🟡 OwnCloud / NextCloud | `owncloud` SDK | geplant |
-| 🟡 Google Drive | `google-api-python-client` | geplant |
+| 🟢 Google Drive | `rclone` | implementiert |
 | ⚪ S3-kompatibel (z. B. MinIO, Wasabi) | `boto3` | optional |
 
 ---

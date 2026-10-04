@@ -1,5 +1,5 @@
 [Unit]
-Description=Paperless Backup Service (mit Dracoon Upload)
+Description=Paperless Backup Service (Dracoon / Google Drive)
 After=network-online.target docker.service
 Wants=network-online.target
 

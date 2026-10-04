@@ -1,60 +1,46 @@
-import os
-import sys
+import argparse
 import asyncio
-from datetime import datetime
+import sys
+
 from backup_manager import BackupManager
 from config_loader import ConfigLoader
 from logger import JsonLogger
-from dracoon_client import DracoonClient
 
-# ANSI-Farben für den Retro-Look
-AMBER = "\033[38;5;214m"
-RESET = "\033[0m"
 
-def banner(mode_text):
-    print(f"{AMBER}╔══════════════════════════════════════════╗{RESET}")
-    print(f"{AMBER}║  🗂️  Paperless Backup  v1.0.2            ║{RESET}")
-    print(f"{AMBER}║  Mode: {mode_text:<31}                   ║{RESET}")
-    print(f"{AMBER}╚══════════════════════════════════════════╝{RESET}\n")
+async def upload_backup(config, logger, archive):
+    if config["backup"]["provider"] == "google":
+        from google_drive_client import GoogleDriveClient
+        storage = GoogleDriveClient(config, logger)
+    else:
+        from dracoon_client import DracoonClient
+        storage = DracoonClient(config, logger)
+    await storage.upload_file(archive)
+    await storage.cleanup_old_backups()
+
 
 def main():
-    headless = "--headless" in sys.argv
-    loader = ConfigLoader()
-    config = loader.load()
-
-    logger = JsonLogger(config["backup"]["log_file"], headless=headless)
-    offsite = str(config.get("backup", {}).get("offsite", "true")).lower() == "true"
-
-    if not headless:
-        banner("OFFSITE" if offsite else "LOCAL ONLY")
-        print(f"{AMBER}⏳ Starte Backup...{RESET}")
-
+    parser = argparse.ArgumentParser(description="Paperless-Backup mit Dracoon oder Google Drive")
+    parser.add_argument("--headless", action="store_true")
+    args = parser.parse_args()
+    logger = None
     try:
-        manager = BackupManager(config, logger)
-        archive_path = manager.run_backup()
-
-        if not archive_path:
-            logger.error("Kein Archiv erstellt – Upload wird übersprungen.")
-            return
-
-        if offsite:
-            if not headless: print(f"{AMBER}☁️  Lade zu Dracoon hoch...{RESET}")
-            dracoon = DracoonClient(config, logger)
-            asyncio.run(dracoon.upload_file(archive_path))
-            asyncio.run(dracoon.cleanup_old_backups())
+        config = ConfigLoader().load()
+        logger = JsonLogger(config["backup"]["log_file"], headless=args.headless)
+        archive = BackupManager(config, logger).run_backup()
+        if not archive:
+            raise RuntimeError("Kein Archiv erstellt")
+        if config["backup"]["offsite"]:
+            asyncio.run(upload_backup(config, logger, archive))
         else:
-            logger.info("Offsite-Upload deaktiviert. Backup bleibt lokal gespeichert.")
-            if not headless: print(f"{AMBER}💾 Lokales Backup abgeschlossen.{RESET}")
-
-    except Exception as e:
-        logger.error(f"Fehler während des Backups: {e}")
-        if not headless:
-            print(f"\033[31m❌ Fehler: {e}{RESET}")
-    finally:
-        logger.backup_event("Backup-Prozess beendet")
-        if not headless:
-            print(f"{AMBER}✅ Backup abgeschlossen.{RESET}\n")
+            logger.info("Offsite deaktiviert; Backup bleibt lokal gespeichert.")
+        logger.backup_event("Backup erfolgreich abgeschlossen", file=archive)
+        return 0
+    except Exception as error:
+        if logger:
+            logger.error(f"Backup fehlgeschlagen: {error}")
+        print(f"Backup fehlgeschlagen: {error}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
