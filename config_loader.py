@@ -27,6 +27,7 @@ class ConfigLoader:
             "google": {
                 "remote": os.getenv("GOOGLE_DRIVE_REMOTE", "gdrive:Backups/Paperless"),
                 "rclone_config": os.getenv("RCLONE_CONFIG"),
+                "rclone_binary": os.getenv("RCLONE_BINARY", "rclone"),
             },
             "dracoon": {
                 "base_url": os.getenv("DRACOON_BASE_URL"),

@@ -18,9 +18,10 @@ class GoogleDriveClient:
         self.retention_days = config["backup"]["retention_days"]
         if not re.match(r"^[\w-]+:", self.remote):
             raise ValueError("GOOGLE_DRIVE_REMOTE muss ein rclone-Ziel wie gdrive:Backups/Paperless sein")
-        if not shutil.which("rclone"):
+        binary = config["google"].get("rclone_binary", "rclone")
+        if not shutil.which(binary):
             raise RuntimeError("rclone fehlt. Bitte installieren und mit 'rclone config' Google Drive einrichten.")
-        self.command = ["rclone"]
+        self.command = [binary]
         if config["google"].get("rclone_config"):
             self.command += ["--config", config["google"]["rclone_config"]]
 

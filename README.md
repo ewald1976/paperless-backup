@@ -57,6 +57,8 @@ PROVIDER=google
 GOOGLE_DRIVE_REMOTE=gdrive:Backups/Paperless
 # Optional, besonders bei systemd: absoluter Konfigurationspfad
 RCLONE_CONFIG=/home/your-user/.config/rclone/rclone.conf
+# Bei Installation nur für den Benutzer (systemd findet ~/.local/bin oft nicht):
+RCLONE_BINARY=/home/your-user/.local/bin/rclone
 ```
 
 Teste den Zugang mit `rclone lsd gdrive:`. Die rclone-Konfiguration enthält
