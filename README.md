@@ -28,7 +28,8 @@ BACKUP_DATA_DIRS=/data/data,/data/media,/data/consume,/data/export
 BACKUP_OUTPUT_DIR=./output
 OFFSITE=true
 PROVIDER=dracoon
-RETENTION_DAYS=7
+RETENTION_DAYS=14
+LOCAL_RETENTION_DAYS=14
 LOG_FILE=backup.log
 ```
 
@@ -91,8 +92,12 @@ python main.py --headless
 ```
 
 Fehler liefern Exit-Code 1, Erfolg Exit-Code 0. JSON-Logs stehen in `LOG_FILE`.
-Lokale Archive bleiben auch nach erfolgreichem Upload erhalten. Es gibt derzeit
-keine automatische lokale Bereinigung; Speicherbedarf entsprechend einplanen.
+Lokale Archive bleiben nach erfolgreichem Upload zunächst erhalten. Nach einem
+erfolgreichen Lauf werden lokale Archive älter als `LOCAL_RETENTION_DAYS`
+(Standard: 14 Tage) im Ausgabeordner entfernt. Wie bei Google entscheidet das
+Datum im Backup-Dateinamen. Fremde Dateien, Unterordner, symbolische Links und
+das aktuelle Archiv bleiben erhalten. Bei Backup- oder Uploadfehlern läuft
+keine lokale Bereinigung. Cloud-Retention wird über `RETENTION_DAYS` gesteuert.
 Starte keine parallelen Backupläufe.
 
 Die Dateien werden während des laufenden Paperless-Betriebs gelesen. Für einen

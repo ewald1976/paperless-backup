@@ -5,6 +5,7 @@ import sys
 from backup_manager import BackupManager
 from config_loader import ConfigLoader
 from logger import JsonLogger
+from retention import cleanup_local_backups
 
 
 async def upload_backup(config, logger, archive):
@@ -33,6 +34,7 @@ def main():
             asyncio.run(upload_backup(config, logger, archive))
         else:
             logger.info("Offsite deaktiviert; Backup bleibt lokal gespeichert.")
+        cleanup_local_backups(config, logger, archive)
         logger.backup_event("Backup erfolgreich abgeschlossen", file=archive)
         return 0
     except Exception as error:

@@ -8,7 +8,7 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
-BACKUP_PATTERN = re.compile(r"paperless_backup_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})(?:_\d{6})?\.tar\.gz")
+from retention import BACKUP_PATTERN
 
 
 class GoogleDriveClient:

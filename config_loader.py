@@ -17,6 +17,7 @@ class ConfigLoader:
             },
             "backup": {
                 "retention_days": int(os.getenv("BACKUP_RETENTION_DAYS", os.getenv("RETENTION_DAYS", "7"))),
+                "local_retention_days": int(os.getenv("LOCAL_RETENTION_DAYS", "14")),
                 "offsite": self._boolean("OFFSITE", "true"),
                 "provider": os.getenv("PROVIDER", "dracoon").lower(),
                 "data_dirs": [p.strip() for p in os.getenv("BACKUP_DATA_DIRS", "/data/data,/data/media,/data/consume,/data/export").split(",") if p.strip()],
@@ -49,6 +50,8 @@ class ConfigLoader:
 
         if config["backup"]["retention_days"] < 1:
             raise ValueError("RETENTION_DAYS muss mindestens 1 sein")
+        if config["backup"]["local_retention_days"] < 1:
+            raise ValueError("LOCAL_RETENTION_DAYS muss mindestens 1 sein")
         if not config["backup"]["data_dirs"]:
             raise ValueError("BACKUP_DATA_DIRS darf nicht leer sein")
         if config["backup"]["offsite"]:

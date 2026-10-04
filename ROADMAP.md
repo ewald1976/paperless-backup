@@ -4,7 +4,8 @@
 
 Dracoon und Google Drive sind über `PROVIDER=dracoon|google` auswählbar.
 Google Drive nutzt rclone mit MD5-Verifikation und ordnergebundener Retention.
-Offen: sichere Dracoon-Retention, Dracoon-Prüfsummen, lokale Retention,
+Lokale Retention ist nach erfolgreichen Läufen implementiert.
+Offen: sichere Dracoon-Retention, Dracoon-Prüfsummen,
 Verschlüsselung und automatisierte Restore-Prüfung.
 
 ## 🏷️ Weitere Planung
